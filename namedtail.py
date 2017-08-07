@@ -14,6 +14,16 @@ def _tail_gen(fin):
         else:
             _tail(fin)
 
+def _tail(fin):
+    while True:
+        where = fin.tell()
+        line = fin.readline()
+        if not line:
+            time.sleep(1)
+            fin.seek(where)
+        else:
+            yield line
+
 def _shift_screen(screen, height):
     screen.scrollok(True)
     screen.setscrreg(1, height - 1)
@@ -30,25 +40,27 @@ def _print_title(screen, file_name):
     screen.addstr(0,0, file_name, (curses.A_UNDERLINE|curses.A_BOLD))
     screen.refresh()
 
-def _tail(fin):
-    while True:
-        where = fin.tell()
-        line = fin.readline()
-        if not line:
-            time.sleep(1)
-            fin.seek(where)
-        else:
-            yield line
-
 def _display_file(fin, screen, height):
-    current = 1
+
+    # Read through file to get to end of file for tail
+    lines = fin.readlines()
+    # Adjust to only display lines equal to height of screen
+    if len(lines) > height - 2:
+        lines = lines[-(height-2):]
+
+    # add last lines to screen
+    for l in range(len(lines)):
+        screen.addstr(l+1, 0, lines[l])
+
+    screen.refresh()
+    current = len(lines) + 1
     for l in _tail_gen(fin):
-        screen.addstr(current,0, l)
-        screen.refresh()
-        current += 1
         if current > height - 2:
             _shift_screen(screen, height)
             current = height - 2
+        screen.addstr(current,0, l)
+        screen.refresh()
+        current += 1
 
 def handle_intrupt(screen, signum, stack):
     exit(_end(screen))
