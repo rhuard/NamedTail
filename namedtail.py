@@ -19,17 +19,6 @@ def _shift_screen(screen, height):
     screen.setscrreg(1, height - 1)
     screen.scroll()
 
-
-def _display_file(fin, screen, height):
-    current = 1
-    for l in _tail_gen(fin):
-        screen.addstr(current,0, l)
-        screen.refresh()
-        current += 1
-        if current > height - 2:
-            _shift_screen(screen, height)
-            current = height - 2
-
 def _end(screen):
     screen.clear()
     screen.refresh()
@@ -50,6 +39,16 @@ def _tail(fin):
             fin.seek(where)
         else:
             yield line
+
+def _display_file(fin, screen, height):
+    current = 1
+    for l in _tail_gen(fin):
+        screen.addstr(current,0, l)
+        screen.refresh()
+        current += 1
+        if current > height - 2:
+            _shift_screen(screen, height)
+            current = height - 2
 
 def handle_intrupt(screen, signum, stack):
     exit(_end(screen))
@@ -73,7 +72,7 @@ def main(args):
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-f', '--file', help='file to tail')
+    parser.add_argument('file', help='file to tail')
 
     return parser.parse_args()
 
