@@ -35,12 +35,12 @@ def _end(screen):
     curses.endwin()
     return 0
 
-def _print_title(screen, file_name):
+def _print_title(screen, file_name, width):
     screen.clear()
-    screen.addstr(0,0, file_name, (curses.A_UNDERLINE|curses.A_BOLD))
+    screen.addnstr(0, 0, file_name, width - 1, (curses.A_UNDERLINE|curses.A_BOLD))
     screen.refresh()
 
-def _display_file(fin, screen, height):
+def _display_file(fin, screen, height, width):
 
     # Read through file to get to end of file for tail
     lines = fin.readlines()
@@ -50,7 +50,7 @@ def _display_file(fin, screen, height):
 
     # add last lines to screen
     for l in range(len(lines)):
-        screen.addstr(l+1, 0, lines[l])
+        screen.addnstr(l+1, 0, lines[l], width - 1)
 
     screen.refresh()
     current = len(lines) + 1
@@ -58,7 +58,7 @@ def _display_file(fin, screen, height):
         if current > height - 2:
             _shift_screen(screen, height)
             current = height - 2
-        screen.addstr(current,0, l)
+        screen.addnstr(current, 0, l, width - 1)
         screen.refresh()
         current += 1
 
@@ -72,11 +72,11 @@ def main(args):
 
     height, width = screen.getmaxyx()
 
-    _print_title(screen, args.file)
+    _print_title(screen, args.file, width)
 
     fin = open(args.file, 'r')
 
-    _display_file(fin, screen, height)
+    _display_file(fin, screen, height, width)
 
     _end(screen)
 
@@ -87,7 +87,6 @@ def parse_args():
     parser.add_argument('file', help='file to tail')
 
     return parser.parse_args()
-
 
 if __name__ == '__main__':
     main(parse_args())
