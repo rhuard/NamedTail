@@ -4,6 +4,7 @@ import curses
 import argparse
 import time
 import signal
+import socket
 from functools import partial
 
 def _tail_gen(fin):
@@ -35,8 +36,10 @@ def _end(screen):
     curses.endwin()
     return 0
 
-def _print_title(screen, file_name, width):
+def _print_title(screen, file_name, width, hostname):
     screen.clear()
+    if hostname:
+        file_name = '{0} @ {1} '.format(file_name , socket.gethostname())
     screen.addnstr(0, 0, file_name, width - 1, (curses.A_UNDERLINE|curses.A_BOLD))
     screen.refresh()
 
@@ -72,7 +75,7 @@ def main(args):
 
     height, width = screen.getmaxyx()
 
-    _print_title(screen, args.file, width)
+    _print_title(screen, args.file, width, args.name)
 
     fin = open(args.file, 'r')
 
@@ -85,6 +88,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('file', help='file to tail')
+    parser.add_argument('-n', '--name', help='display host name of computer with title', default=False, action='store_true')
 
     return parser.parse_args()
 
