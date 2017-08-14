@@ -5,6 +5,8 @@ import argparse
 import time
 import signal
 import socket
+import os
+import string
 from functools import partial
 
 def _tail_gen(fin):
@@ -43,21 +45,23 @@ def _print_title(screen, file_name, width, hostname):
     screen.addnstr(0, 0, file_name, width - 1, (curses.A_UNDERLINE|curses.A_BOLD))
     screen.refresh()
 
-def _wrap_text(screen, current, height, width, line):
+def _wrap_text(screen, current, height, width, line, wrap_indicator):
     start = width
     while(start < len(line)):
         next_segment = line[start:start + width]
         if current > height -2:
             _shift_screen(screen, height)
             current = height - 2
-        screen.addnstr(current, 0, next_segment, start + width)
-        start += width
+        l = '{0}{1}'.format(wrap_indicator, next_segment)
+        length = start + width - len(wrap_indicator)
+        screen.addnstr(current, 0, l, length)
+        start += width - len(wrap_indicator)
         current += 1
 
     screen.refresh()
     return current
 
-def _display_file(fin, screen, height, width, wrap_arround=True):
+def _display_file(fin, screen, height, width, wrap_arround=True, wrap_indicator=''):
 
     # Read through file to get to end of file for tail
     lines = fin.readlines()
@@ -71,7 +75,7 @@ def _display_file(fin, screen, height, width, wrap_arround=True):
         screen.addnstr(current, 0, lines[l], width)
         current += 1
         if wrap_arround:
-            current = _wrap_text(screen, current, height, width, lines[l])
+            current = _wrap_text(screen, current, height, width, lines[l], wrap_indicator)
         if current > height - 2:
             _shift_screen(screen, height)
             current = height - 2
@@ -85,13 +89,29 @@ def _display_file(fin, screen, height, width, wrap_arround=True):
         screen.addnstr(current, 0, l, width)
         current += 1
         if wrap_arround:
-            current = _wrap_text(screen, current, height, width, l)
+            current = _wrap_text(screen, current, height, width, l, wrap_indicator)
         screen.refresh()
 
 def handle_intrupt(screen, signum, stack):
     exit(_end(screen))
 
 def main(args):
+
+    rc_configuration = {
+            'wrap_indicator':''
+            }
+
+    rcfile = os.path.expanduser(args.rc_file)
+    if os.path.isfile(rcfile):
+        with open(rcfile) as rc:
+            for l in rc:
+                l = string.strip(l)
+                split = l.split('=')
+                if split[0] in rc_configuration:
+                    value = split[1].replace('"', "'")
+                    value = string.strip(value, "'")
+                    rc_configuration[split[0]] = value
+
     screen = curses.initscr()
 
     signal.signal(signal.SIGINT, partial(handle_intrupt, screen))
@@ -102,7 +122,8 @@ def main(args):
 
     fin = open(args.file, 'r')
 
-    _display_file(fin, screen, height, width, args.no_wrap)
+    wrap_indicator = rc_configuration['wrap_indicator']
+    _display_file(fin, screen, height, width, args.no_wrap, wrap_indicator)
 
     _end(screen)
 
@@ -113,6 +134,7 @@ def parse_args():
     parser.add_argument('file', help='file to tail')
     parser.add_argument('-n', '--name', help='display host name of computer with title', default=False, action='store_true')
     parser.add_argument('-w', '--no_wrap', help='wrap text for lines longer than width of the screen', default=True, action='store_false')
+    parser.add_argument('-c', '--rc_file', help='path to rc file [default is ~/.ntabrc]', default='~/.ntabrc')
 
     return parser.parse_args()
 
