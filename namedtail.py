@@ -43,7 +43,21 @@ def _print_title(screen, file_name, width, hostname):
     screen.addnstr(0, 0, file_name, width - 1, (curses.A_UNDERLINE|curses.A_BOLD))
     screen.refresh()
 
-def _display_file(fin, screen, height, width):
+def _wrap_text(screen, current, height, width, line):
+    start = width
+    while(start < len(line)):
+        next_segment = line[start:start + width]
+        if current > height -2:
+            _shift_screen(screen, height)
+            current = height - 2
+        screen.addnstr(current, 0, next_segment, start + width)
+        start += width
+        current += 1
+
+    screen.refresh()
+    return current
+
+def _display_file(fin, screen, height, width, wrap_arround=True):
 
     # Read through file to get to end of file for tail
     lines = fin.readlines()
@@ -52,18 +66,27 @@ def _display_file(fin, screen, height, width):
         lines = lines[-(height-2):]
 
     # add last lines to screen
+    current = 1
     for l in range(len(lines)):
-        screen.addnstr(l+1, 0, lines[l], width - 1)
+        screen.addnstr(current, 0, lines[l], width)
+        current += 1
+        if wrap_arround:
+            current = _wrap_text(screen, current, height, width, lines[l])
+        if current > height - 2:
+            _shift_screen(screen, height)
+            current = height - 2
 
+    # start tail
     screen.refresh()
-    current = len(lines) + 1
     for l in _tail_gen(fin):
         if current > height - 2:
             _shift_screen(screen, height)
             current = height - 2
-        screen.addnstr(current, 0, l, width - 1)
-        screen.refresh()
+        screen.addnstr(current, 0, l, width)
         current += 1
+        if wrap_arround:
+            current = _wrap_text(screen, current, height, width, l)
+        screen.refresh()
 
 def handle_intrupt(screen, signum, stack):
     exit(_end(screen))
@@ -79,7 +102,7 @@ def main(args):
 
     fin = open(args.file, 'r')
 
-    _display_file(fin, screen, height, width)
+    _display_file(fin, screen, height, width, args.no_wrap)
 
     _end(screen)
 
@@ -89,6 +112,7 @@ def parse_args():
 
     parser.add_argument('file', help='file to tail')
     parser.add_argument('-n', '--name', help='display host name of computer with title', default=False, action='store_true')
+    parser.add_argument('-w', '--no_wrap', help='wrap text for lines longer than width of the screen', default=True, action='store_false')
 
     return parser.parse_args()
 
