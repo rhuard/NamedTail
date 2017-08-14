@@ -108,9 +108,7 @@ def main(args):
                 l = string.strip(l)
                 split = l.split('=')
                 if split[0] in rc_configuration:
-                    value = split[1].replace('"', "'")
-                    value = string.strip(value, "'")
-                    rc_configuration[split[0]] = value
+                    rc_configuration[split[0]] = split[1]
 
     screen = curses.initscr()
 
